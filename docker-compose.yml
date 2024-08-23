@@ -3,7 +3,7 @@ services:
     build: .
     environment:
       - BASE_URL=https://platform.plutonium.pw/serverkeys/
-      - COOKIE={PLUTONIUM_COOKIE}
+      - COOKIE=${PLUTONIUM_COOKIE}
     volumes:
       - ./data:/data
     ports:
