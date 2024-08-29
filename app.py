@@ -17,8 +17,8 @@ COOKIE = os.environ.get('COOKIE', '')
 
 # Constants
 COMMON_HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; rv:129.0) Gecko/20100101 Firefox/129.0",
-    "Accept-Language": "en-US,en;q=0.5",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36",
+    "Accept-Language": "en-US,en;q=0.9",
     "DNT": "1",
     "Sec-GPC": "1",
     "Connection": "keep-alive",
@@ -56,10 +56,13 @@ def get_headers(is_post=False):
             "Referer": BASE_URL,
             "Origin": "https://platform.plutonium.pw",
             "Sec-Fetch-Dest": "empty",
-            "Sec-Fetch-Mode": "no-cors",
-            "Sec-Fetch-Site": "same-origin",
+            "Sec-Fetch-Mode": "cors",
             "Content-Type": "application/json",
-            "Priority": "u=0",
+            "Sec-Fetch-Site": "same-origin",
+            "Sec-CH-UA": '"Chromium";v="127", "Not)A;Brand";v="99"',
+            "Sec-CH-UA-Mobile": "?0",
+            "Sec-CH-UA-Platform": '"Windows"',
+            "Priority": "u=1, i",
             "Pragma": "no-cache",
             "Cache-Control": "no-cache"
         })
@@ -99,6 +102,7 @@ def generate_key():
     data = request.json
     hostname = data.get('server_name')
     game = data.get('mode')
+    client_ip = request.remote_addr
 
     with key_storage_lock:
         # Check existing keys
@@ -106,6 +110,8 @@ def generate_key():
             if info['hostname'] == hostname and info['game'] == game:
                 if datetime.fromisoformat(info['expiration']) > datetime.now():
                     return jsonify({"key": stored_key})
+            if info.get('client_ip') == client_ip:
+                return jsonify({"error": "This IP has already generated a key"}), 403
 
     # If no valid key found, generate a new one
     payload = {"hostname": hostname, "game": game}
@@ -130,11 +136,12 @@ def generate_key():
         item_game = item.find('div', class_='game').text.strip()
         if item_hostname == hostname and item_game == game:
             key = item.find('div', class_='key').text.strip()
-            # Store the key with expiration time
+            # Store the key with expiration time and client IP
             key_storage[key] = {
                 'hostname': hostname,
                 'game': game,
-                'expiration': (datetime.now() + timedelta(hours=48)).isoformat()
+                'expiration': (datetime.now() + timedelta(hours=48)).isoformat(),
+                'client_ip': client_ip
             }
             save_key_storage()  # Save updated key storage to file
             # Schedule key deletion after 48 hours
